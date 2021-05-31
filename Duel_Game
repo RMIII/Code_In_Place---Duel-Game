@@ -1,0 +1,469 @@
+"""
+This game simulates a DND-esque fight between an adventurer and a boss monster.
+"""
+
+import random
+
+def main():
+  introduction()
+  adventurer = char_creation()
+  boss = Boss()
+
+# Rolling for Initiative
+  adv_initiative = random.randint(1,20)
+  boss_initiative = random.randint(1,20)
+
+
+# Commencing Combat - continue with player turns until one of them is defeated
+  while int(adventurer.HEALTH) > 0 and int(boss.HEALTH) > 0:
+      if adv_initiative > boss_initiative:
+        adventurer, boss = adv_turn(adventurer,boss)
+#       test(adventurer, boss)
+        adventurer, boss = boss_turn(adventurer,boss)
+#       test(adventurer, boss)
+      else:
+        adventurer, boss = boss_turn(adventurer,boss)
+#       test(adventurer, boss)
+        adventurer, boss = adv_turn(adventurer,boss)
+#       test(adventurer, boss)
+  victory(adventurer,boss)
+  retry = input("Do you want to try again? Y/N ").lower()
+  if retry == "Y":
+    main()
+  else:
+    exit()
+
+#Helper Functions
+def test(adventurer, boss):
+  print ("Hero Health: ", adventurer.HEALTH)
+  print ("Boss Health: ", boss.HEALTH)
+  print("")
+
+def introduction():
+  print("")
+  print("An evil vampire, Draco, has terrorized the surrounding ducal lands for centuries.")
+  print("The local lord, Istvan, has summoned various adventurers to defeat Draco and claim his treasure as their reward.")
+  print("Come adventurer, will you be exalted above all others, or join the scores of the defeated, left to rot in eternity!")
+  print("")
+
+def char_creation():
+  name = str(input("What is your adventurer's name? "))
+  print("")
+  print("Greetings",name)
+  print("What is your class?")
+  print("Fighter - A heavily armored warrior wielding sword and shield.")
+  print("Mage - A wizened hermit capable of wielding the elements.")
+  print("Rogue - A lightly armored scoundrel armed with twin daggers.")
+  print("")
+  role = str(input("Please type the name of the class: ")).lower()
+  while not (role == "fighter" or role == "mage" or role == "rogue"):
+    role = str(input("Please select a valid class: ")).lower()
+  if role == "fighter":
+    adventurer = Fighter(name)
+  elif role == "mage":
+    adventurer = Mage(name)
+  elif role == "rogue":
+    adventurer = Rogue(name)
+  print("")
+  return adventurer
+
+def adv_turn(adventurer,boss):
+  if adventurer.HEALTH > 0 and boss.HEALTH > 0:
+    if adventurer.STUNNED == False:
+      choice = action_list(adventurer)
+      actions = adventurer.action_list
+      adventurer.SHIELD = 0
+      if choice == actions[0]:
+        boss = adventurer.attack(boss)
+      elif choice == actions[1]:
+        adventurer = adventurer.defend()
+      elif choice == actions[2]:
+        boss = adventurer.special_a(boss)
+      elif choice == actions[3]:
+        adventurer = potion(adventurer)
+    else:
+      print(adventurer.name,"is too stunned to move!")
+      print("")
+      adventurer.STUNNED == False
+  else:
+    pass
+  return adventurer,boss
+
+def boss_turn(adventurer,boss):
+  if boss.HEALTH > 0 and adventurer.HEALTH > 0:
+    if boss.STUNNED == False:
+      print("It is the enemy's turn. What will they choose to do?")
+      action_counter = random.randint(1,4)
+      if action_counter == 1:
+        print("Draco has chosen to attack.")
+        adventurer = boss.attack(adventurer)
+      elif action_counter == 2:
+        print("Draco has chosen to defend.")
+        boss = boss.defend()
+      elif action_counter == 3:
+        print("Draco embraces his vampiric nature.")
+        boss, adventurer = boss.vampiric_touch(adventurer)
+      elif action_counter == 4:
+        print("Draco begins to cast necromancy.")
+        adventurer = boss.f_o_d(adventurer)
+    else:
+      print(boss.name,"is too stunned to move!")
+      print("")
+      boss.STUNNED = False
+  else:
+    pass
+  return adventurer, boss
+
+def victory(adventurer,boss):
+  if adventurer.HEALTH > boss.HEALTH:
+      print(adventurer.name, "has defeated", boss.name)
+      print("Congratulations! You claim Draco's treasure and live the rest of your life in luxury.")
+  else:
+      print(boss.name, "has defeated", adventurer.name)
+      print("Draco raises you as one of his fledgeling vampires.")
+
+def action_list(adventurer):
+  print("It is your turn! What do you want to do?")
+  for action in adventurer.action_list:
+    print(action)
+  action = input("Please input your action here (Type 'Exit' to leave the game): ")
+  while not (action in adventurer.action_list or action == "Exit"):
+    action = input("Please input a valid action here (Type 'Exit' to leave the game): ")
+  if action == "Exit":
+    exit()  
+  else:
+    print("")
+    return action
+
+def damage_report(defender,damage):
+  if defender.HEALTH > 0:
+    print("The attack dealt", damage, "damage!", "The enemy has", defender.HEALTH, "health remaining.")
+    print("")
+  else:
+    print("The attack dealt", damage, "damage!", "The enemy's health has been reduced to 0")
+    print("")
+
+#General Player Actions
+def potion(drinker):
+  if drinker.MAXHP > drinker.HEALTH:
+    heal_amount = random.randint(5,15)
+    drinker.HEALTH = drinker.HEALTH + heal_amount
+    if drinker.HEALTH > drinker.MAXHP:
+      drinker.HEALTH = drinker.MAXHP
+    print(drinker.name, "heals for", heal_amount, "and has",drinker.HEALTH, "HP")
+    print("")
+  else:
+    pass
+  return drinker
+
+#Classes & Special
+class Fighter:
+  def __init__(self, name):
+    self.name = name
+    self.STR = 5
+    self.DEX = 3
+    self.CON = 5
+    self.WIS = 2
+    self.INT = 2
+    self.CHA = 2
+
+    self.PROF = float(2)
+    self.AC = float(18)
+    self.SHIELD = float(2)
+    self.HEALTH = float(75)
+    self.MAXHP = float(75)
+
+    self.DEFEND = False
+    self.STUNNED = False
+
+    self.CRIT_MAX = int(20)
+    self.CRIT_MIN = int(1)
+    self.CRIT_MULTI = float(1.5)
+
+    self.action_list = ["Slash","Block","Shield Bash","Heal"]
+
+  def attack(self,defender):
+    attack_roll = random.randint(1,20)
+    AR = attack_roll + self.STR + self.PROF
+    AC = defender.SHIELD + defender.AC
+    if attack_roll >= AC:
+      if attack_roll == 20:
+        damage = random.randint(1,15) + random.randint(1,15) + self.STR 
+      else:
+        damage = random.randint(1,15) + self.STR 
+      defender.HEALTH = defender.HEALTH - damage
+      print(self.name,"slashes with his trusty sword.")
+      print("They deal", damage, "damage!", "The enemy has", defender.HEALTH, "health remaining.")
+      print("")
+    else:
+      print("The attack missed!")
+      print("")
+    return defender
+
+  def defend(self):
+    self.SHIELD = 4
+    print(self.name, "gets ready to defend")
+    print("")
+    return self
+
+  def special_a(self, defender):
+    attack_roll = random.randint(1,20)
+    AR = attack_roll + self.STR + self.PROF
+    AC = defender.SHIELD + defender.AC
+    if attack_roll >= AC:
+      if attack_roll == 20:
+        damage = random.randint(1,10) + random.randint(1,15) + self.STR 
+      else:
+        damage = random.randint(1,10) + self.STR 
+      defender.HEALTH = defender.HEALTH - damage
+      defender.STUNNED = True
+      print(self.name,"bashes with his shield and stuns",defender.name)
+      damage_report(defender,damage)
+    else:
+      print("The attack missed!")
+      print("")
+    return defender
+
+class Mage:
+  def __init__(self, name):
+    self.name = name
+    self.STR = -2
+    self.DEX = 0
+    self.CON = 2
+    self.WIS = 5
+    self.INT = 5
+    self.CHA = 0
+
+    self.PROF = float(2)
+    self.AC = float(16)
+    self.SHIELD = float(2)
+    self.HEALTH = float(50)
+    self.MAXHP = float(50)
+
+    self.DEFEND = False
+    self.STUNNED = False
+
+    self.CRIT_MAX = int(20)
+    self.CRIT_MIN = int(1)
+    self.CRIT_MULTI = float(1.5)
+
+    self.action_list = ["Bonk","Spell Shield","Magic Missile","Heal"]
+
+  def attack(self,defender):
+    attack_roll = random.randint(1,20)
+    AR = attack_roll + self.STR + self.PROF
+    AC = defender.SHIELD + defender.AC
+    if attack_roll >= AC:
+      if attack_roll == 20:
+        damage = random.randint(1,15) + random.randint(1,15) + self.STR 
+      else:
+        damage = random.randint(1,15) + self.STR 
+      defender.HEALTH = defender.HEALTH - damage
+      print(self.name,"wacks with their staff!")
+      damage_report(defender,damage)
+    else:
+      print("The attack missed!")
+      print("")
+    return defender
+
+  def defend(self):
+    self.SHIELD = 10 + self.INT
+    print(self.name, "casts a spell shield")
+    print("")
+    return self
+
+  def special_a(self, defender):
+    magic_die = random.randint(1,6)
+    damage = 0
+    AC = defender.SHIELD + defender.AC
+    for i in range(magic_die):
+      attack_roll = random.randint(1,20)
+      AR = attack_roll + self.WIS + self.PROF
+      if attack_roll >= AC:
+        if attack_roll == 20:
+          damage =+ random.randint(1,4) + random.randint(1,4) + self.INT 
+        else:
+          damage =+ random.randint(1,4) + self.STR 
+        defender.HEALTH = defender.HEALTH - damage
+    print(self.name,"casts magic missile!")
+    if damage == 0:
+      print("All missiles missed.")
+      print("")
+    else:
+      damage_report(defender,damage)
+    return defender
+
+class Rogue:
+  def __init__(self, name):
+    self.name = name
+    self.STR = 5
+    self.DEX = 3
+    self.CON = 5
+    self.WIS = 2
+    self.INT = 2
+    self.CHA = 2
+
+    self.PROF = float(2)
+    self.AC = float(18)
+    self.SHIELD = float(2)
+    self.HEALTH = float(75)
+    self.MAXHP = float(75)
+
+    self.DEFEND = False
+    self.STUNNED = False
+
+    self.CRIT_MAX = int(20)
+    self.CRIT_MIN = int(1)
+    self.CRIT_MULTI = float(1.5)
+
+    self.action_list = ["Dual Strike","Evade","Cheap Shot","Heal"]
+
+  def attack(self,defender):
+    AC = defender.SHIELD + defender.AC
+    damage = 0
+    for i in range(2):
+      attack_roll = random.randint(1,20)
+      AR = attack_roll + self.DEX + self.PROF
+      if attack_roll >= AC:
+        if attack_roll >= 18 and attack_roll <= 20:
+          damage =+ random.randint(1,8) + random.randint(1,8) + self.DEX
+        else:
+          damage =+ random.randint(1,8) + self.DEX
+    defender.HEALTH = defender.HEALTH - damage
+    print(self.name,"slashes with both daggers.")
+    if damage == 0:
+      print("Both strikes missed")
+      print("")
+    else:
+      damage_report(defender,damage)
+    return defender
+
+  def defend(self):
+    self.SHIELD = self.DEX + random.randint(1,10)
+    print(self.name, "gets ready to dodge the next attack")
+    print("")
+    return self
+
+  def special_a(self, defender): # Attack is performed on an advantage with differing effects
+    attack_roll_1 = random.randint(1,20)
+    attack_roll_2 = random.randint(1,20)
+    if attack_roll_1 > attack_roll_2:
+      attack_roll = attack_roll_1
+    elif attack_roll_2 > attack_roll_1:
+      attack_roll = attack_roll_2
+    else:
+      attack_roll = attack_roll_1
+    AR = attack_roll + self.DEX + self.PROF
+    AC = defender.SHIELD + defender.AC 
+
+    if attack_roll >= AC:
+      print(self.name,"does a cheap shot!")
+      if attack_roll == 20:
+        damage = random.randint(16,25) + self.DEX 
+        defender.HEALTH = defender.HEALTH - damage
+        defender.STUNNED = True
+        print(self.name, "strikes for massive damage, dealing", damage,"damage and stunning the enemy!")
+        print("The enemy has", defender.HEALTH, "health remaining.")
+        print("")
+      else:
+        cheap_shot = random.randint(1,3)
+        if   cheap_shot == 1:
+          defender.STUNNED = True
+          print("The enemy is stunned.")
+          print("")
+        elif cheap_shot == 2:
+          damage = random.randint(16,25) + self.DEX 
+          defender.HEALTH = defender.HEALTH - damage
+          print(self.name, "strikes for massive damage, dealing ", damage," damage!", "The enemy has", defender.HEALTH, "health remaining.")
+          print("")
+        elif cheap_shot == 3:
+          damage = random.randint(1,15) + self.DEX 
+          defender.HEALTH = defender.HEALTH - damage
+          damage_report(defender,damage)
+    else:
+      print("The attack misses.")
+    return defender
+
+class Boss:
+  def __init__(self):
+    self.name = "Draco"
+    self.STR = 5
+    self.DEX = 3
+    self.CON = 5
+    self.WIS = 2
+    self.INT = 2
+    self.CHA = 2
+
+    self.PROF = float(2)
+    self.AC = float(12)
+    self.SHIELD = float(2)
+    self.HEALTH = float(75)
+    self.MAXHP = float(75)
+
+    self.DEFEND = False
+    self.STUNNED = False
+
+    self.CRIT_MAX = int(20)
+    self.CRIT_MIN = int(1)
+    self.CRIT_MULTI = float(1.5)
+
+  def attack(self,defender):
+    attack_roll = random.randint(1,20)
+    AR = attack_roll + self.STR + self.PROF
+    AC = defender.SHIELD + defender.AC
+    if attack_roll >= AC:
+      if attack_roll == 20:
+        damage = random.randint(1,15) + random.randint(1,15) + self.STR 
+        defender.HEALTH = defender.HEALTH - damage
+      else:
+        damage = random.randint(1,15) + self.STR 
+        defender.HEALTH = defender.HEALTH - damage
+      print(self.name,"has chosen to attack")
+      damage_report(defender,damage)
+    else:
+      print("The attack missed!")
+      print("")
+    return defender
+  
+  def defend(self):
+    self.SHIELD = 2
+    print(self.name, "casts bone shield!")
+    print("")
+    return self
+
+  def vampiric_touch(self, defender):
+    attack_roll = random.randint(1,20)
+    AC = defender.SHIELD + defender.AC
+    if attack_roll >= AC:
+      damage = random.randint(1,10)
+      heal = damage/2
+      defender.HEALTH = defender.HEALTH - damage
+      self.HEALTH = self.HEALTH + heal
+      print(self.name,"has cast Vampiric Touch")
+      print("His touch steals the hero's strength dealing", damage, "damage and gaining ", heal," health")
+      print(defender.name,"has", defender.HEALTH, "health remaining.")
+      print("")
+    else:
+      print("The attack missed!")
+      print("")
+    return self, defender
+
+  def f_o_d(self,defender):
+    attack_roll = random.randint(1,20)
+    AC = defender.SHIELD + defender.AC
+    damage = 0
+    for i in range(7):
+      damage += random.randint(1,8)
+    if attack_roll >= AC:
+      defender.HEALTH = defender.HEALTH - damage
+      print(self.name,"has cast the Finger of Death")
+      damage_report(defender,damage)
+    else:
+      damage = damage/2
+      defender.HEALTH = defender.HEALTH - damage
+      print(self.name,"has cast the Finger of Death")
+      damage_report(defender,damage)
+    return defender
+
+if __name__ == '__main__':
+    main()
